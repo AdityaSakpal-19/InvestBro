@@ -384,7 +384,7 @@ def calculate_investment(amount: float, current_price: float, predicted_price: f
 # ─────────────────────────────────────────────
 # Gemini AI
 # ─────────────────────────────────────────────
-GEMINI_API_KEY = "AQ.Ab8RN6KF4JwKXLE0BuRdRhfpoMp2eliFIwcb-pO39WBII1CxCw"
+GEMINI_API_KEY = "AQ.Ab8RN6L7IaO2MbkfQDKB6xxjZ2g5FFTRxYMoSs16M9qg-1hFJw"
 
 
 def get_gemini_client():
