@@ -21,10 +21,8 @@ from model import get_or_train_model, predict_next_price
 # ─────────────────────────────────────────────
 # Shared storage paths (mirrors app.py constants)
 # ─────────────────────────────────────────────
-STORAGE_DIR    = "storage"
-DATA_DIR       = os.path.join(STORAGE_DIR, "data")
-WATCHLIST_FILE = os.path.join(STORAGE_DIR, "watchlist.json")
-HOLDINGS_FILE  = os.path.join(STORAGE_DIR, "holdings.json")
+STORAGE_DIR = "storage"
+DATA_DIR    = os.path.join(STORAGE_DIR, "data")
 
 
 # ─────────────────────────────────────────────
@@ -40,12 +38,24 @@ def _load_json(path: str, default):
         return default
 
 
+def _current_user() -> str:
+    return st.session_state.get("username", "")
+
+
+def _user_dir(username: str) -> str:
+    path = os.path.join(STORAGE_DIR, "users", username)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
 def load_watchlist() -> list:
-    return _load_json(WATCHLIST_FILE, [])
+    path = os.path.join(_user_dir(_current_user()), "watchlist.json")
+    return _load_json(path, [])
 
 
 def load_holdings() -> dict:
-    return _load_json(HOLDINGS_FILE, {})
+    path = os.path.join(_user_dir(_current_user()), "holdings.json")
+    return _load_json(path, {})
 
 
 def get_holding(ticker: str) -> dict:

@@ -24,13 +24,31 @@ from model import get_or_train_model, predict_next_price
 # ─────────────────────────────────────────────
 # Storage layout
 # ─────────────────────────────────────────────
-STORAGE_DIR    = "storage"
-DATA_DIR       = os.path.join(STORAGE_DIR, "data")
-WATCHLIST_FILE = os.path.join(STORAGE_DIR, "watchlist.json")
-HOLDINGS_FILE  = os.path.join(STORAGE_DIR, "holdings.json")
+STORAGE_DIR = "storage"
+DATA_DIR    = os.path.join(STORAGE_DIR, "data")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 # storage/models/ is created by model.py
+
+
+def _user_dir(username: str) -> str:
+    """Return (and create) the per-user storage directory."""
+    path = os.path.join(STORAGE_DIR, "users", username)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _watchlist_file(username: str) -> str:
+    return os.path.join(_user_dir(username), "watchlist.json")
+
+
+def _holdings_file(username: str) -> str:
+    return os.path.join(_user_dir(username), "holdings.json")
+
+
+def _current_user() -> str:
+    """Return the active username from session state (guaranteed to exist after login)."""
+    return st.session_state.get("username", "")
 
 # ─────────────────────────────────────────────
 # Page config (must be first Streamlit call)
@@ -82,6 +100,10 @@ st.markdown("""
 # ─────────────────────────────────────────────
 # Session-state defaults
 # ─────────────────────────────────────────────
+if "username" not in st.session_state:
+    st.session_state["username"] = ""
+if "display_name" not in st.session_state:
+    st.session_state["display_name"] = ""
 if "page" not in st.session_state:
     st.session_state["page"] = "home"
 if "stock_params" not in st.session_state:
@@ -89,20 +111,21 @@ if "stock_params" not in st.session_state:
 
 
 # ─────────────────────────────────────────────
-# Watchlist  —  storage/watchlist.json
+# Watchlist  —  storage/users/<user>/watchlist.json
 # ─────────────────────────────────────────────
 def load_watchlist() -> list:
-    if not os.path.exists(WATCHLIST_FILE):
+    path = _watchlist_file(_current_user())
+    if not os.path.exists(path):
         return []
     try:
-        with open(WATCHLIST_FILE) as f:
+        with open(path) as f:
             return json.load(f)
     except Exception:
         return []
 
 
 def save_watchlist(wl: list):
-    with open(WATCHLIST_FILE, "w") as f:
+    with open(_watchlist_file(_current_user()), "w") as f:
         json.dump(wl, f, indent=2)
 
 
@@ -118,7 +141,7 @@ def remove_from_watchlist(ticker: str):
 
 
 # ─────────────────────────────────────────────
-# Holdings  —  storage/holdings.json
+# Holdings  —  storage/users/<user>/holdings.json
 #
 # Schema per ticker:
 #   { "units": float, "avg_price": float, "transactions": [...] }
@@ -130,17 +153,18 @@ def remove_from_watchlist(ticker: str):
 # ─────────────────────────────────────────────
 def load_holdings() -> dict:
     """Return the full holdings dict keyed by ticker."""
-    if not os.path.exists(HOLDINGS_FILE):
+    path = _holdings_file(_current_user())
+    if not os.path.exists(path):
         return {}
     try:
-        with open(HOLDINGS_FILE) as f:
+        with open(path) as f:
             return json.load(f)
     except Exception:
         return {}
 
 
 def save_holdings(holdings: dict):
-    with open(HOLDINGS_FILE, "w") as f:
+    with open(_holdings_file(_current_user()), "w") as f:
         json.dump(holdings, f, indent=2)
 
 
@@ -445,6 +469,24 @@ def show_home():
     with st.sidebar:
         st.title("📈 InvestBro")
         st.markdown("*Your AI-powered investment companion*")
+        st.markdown("---")
+
+        # ── User name display + switch ─────────
+        display_name = st.session_state.get("display_name") or st.session_state.get("username", "")
+        st.markdown(
+            f"<div style='background:#1a1a1a;border:1px solid #333;border-radius:6px;"
+            f"padding:0.5rem 0.75rem;margin-bottom:0.5rem;'>"
+            f"<span style='font-size:0.78rem;color:#aaaaaa;'>Signed in as</span><br>"
+            f"<strong style='font-size:1rem;color:#ffffff;'>👤 {display_name}</strong>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        if st.button("🔄 Switch User", use_container_width=True):
+            st.session_state["username"]     = ""
+            st.session_state["display_name"] = ""
+            st.session_state["page"]         = "home"
+            st.rerun()
+
         st.markdown("---")
         st.subheader("📋 Investment Inputs")
 
@@ -865,9 +907,40 @@ def show_stock():
 
 
 # ─────────────────────────────────────────────
+# ██  LOGIN PAGE
+# ─────────────────────────────────────────────
+def show_login():
+    st.title("📈 InvestBro")
+    st.markdown("#### Your AI-powered stock investment companion")
+    st.markdown("---")
+
+    st.markdown("### 👤 Welcome! Please enter your name to continue.")
+    st.markdown(
+        "Your watchlist, portfolio and holdings are saved privately under your name."
+    )
+
+    col, _ = st.columns([2, 3])
+    with col:
+        name_input = st.text_input(
+            "Your Name",
+            placeholder="e.g. Aryan, Priya …",
+            help="Enter any name — each name gets its own private data.",
+        ).strip()
+        if st.button("🚀 Get Started", use_container_width=True, disabled=not name_input):
+            # Sanitise: keep only alphanumeric + underscores for folder safety
+            safe_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in name_input)
+            st.session_state["username"]      = safe_name
+            st.session_state["display_name"]  = name_input
+            st.session_state["page"]          = "home"
+            st.rerun()
+
+
+# ─────────────────────────────────────────────
 # Router
 # ─────────────────────────────────────────────
-if st.session_state["page"] == "stock":
+if not st.session_state.get("username"):
+    show_login()
+elif st.session_state["page"] == "stock":
     show_stock()
 elif st.session_state["page"] == "portfolio":
     # Import and run portfolio page inline
