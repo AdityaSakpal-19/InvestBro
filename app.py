@@ -898,21 +898,26 @@ def show_stock():
 # ─────────────────────────────────────────────
 # ██  LOGIN PAGE
 # ─────────────────────────────────────────────
-def _get_saved_users() -> list[str]:
-    """Return folder names under storage/users/ that have at least a watchlist or holdings file."""
-    users_dir = os.path.join(STORAGE_DIR, "users")
-    if not os.path.isdir(users_dir):
-        return []
-    result = []
-    for entry in sorted(os.scandir(users_dir), key=lambda e: e.name.lower()):
-        if entry.is_dir():
-            has_data = (
-                os.path.exists(os.path.join(entry.path, "watchlist.json")) or
-                os.path.exists(os.path.join(entry.path, "holdings.json"))
-            )
-            if has_data:
-                result.append(entry.name)
-    return result
+# ─────────────────────────────────────────────
+# Credentials  —  storage/credentials.json
+# Schema: { "<username>": { "email": str, "password": str, "display_name": str } }
+# ─────────────────────────────────────────────
+CREDENTIALS_FILE = os.path.join(STORAGE_DIR, "credentials.json")
+
+
+def _load_credentials() -> dict:
+    if not os.path.exists(CREDENTIALS_FILE):
+        return {}
+    try:
+        with open(CREDENTIALS_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_credentials(creds: dict):
+    with open(CREDENTIALS_FILE, "w") as f:
+        json.dump(creds, f, indent=2)
 
 
 def show_login():
@@ -920,48 +925,54 @@ def show_login():
     st.markdown("#### Your AI-powered stock investment companion")
     st.markdown("---")
 
-    # ── Saved users (quick login) ──────────────
-    saved_users = _get_saved_users()
-    if saved_users:
-        st.markdown("### 👥 Saved Users")
-        st.caption("Click a name to sign in instantly.")
-
-        # Display up to 4 per row
-        cols_per_row = 4
-        for i in range(0, len(saved_users), cols_per_row):
-            row_users = saved_users[i : i + cols_per_row]
-            cols = st.columns(cols_per_row)
-            for col, uname in zip(cols, row_users):
-                # Derive a readable display name (replace underscores with spaces)
-                display = uname.replace("_", " ").title()
-                if col.button(f"👤 {display}", key=f"saved_user_{uname}", use_container_width=True):
-                    st.session_state["username"]     = uname
-                    st.session_state["display_name"] = display
-                    st.session_state["page"]         = "home"
-                    st.rerun()
-
-        st.markdown("---")
-
-    # ── New user entry ─────────────────────────
-    st.markdown("### ✏️ New User" if saved_users else "### 👤 Welcome! Please enter your name to continue.")
-    st.markdown(
-        "Your watchlist, portfolio and holdings are saved privately under your name."
-    )
-
     col, _ = st.columns([2, 3])
     with col:
-        name_input = st.text_input(
-            "Your Name",
-            placeholder="e.g. Aryan, Priya …",
-            help="Enter any name — each name gets its own private data.",
-        ).strip()
-        if st.button("🚀 Get Started", use_container_width=True, disabled=not name_input):
-            # Sanitise: keep only alphanumeric + hyphens/underscores for folder safety
-            safe_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in name_input)
-            st.session_state["username"]     = safe_name
-            st.session_state["display_name"] = name_input
-            st.session_state["page"]         = "home"
-            st.rerun()
+        tab_login, tab_register = st.tabs(["🔑 Sign In", "📝 Register"])
+
+        with tab_login:
+            login_username = st.text_input("Username", key="login_username").strip()
+            login_email    = st.text_input("Email",    key="login_email").strip().lower()
+            login_password = st.text_input("Password", type="password", key="login_password")
+
+            if st.button("🚀 Sign In", use_container_width=True, disabled=not (login_username and login_email and login_password)):
+                creds = _load_credentials()
+                user  = creds.get(login_username)
+                if (
+                    user is not None
+                    and user["email"]    == login_email
+                    and user["password"] == login_password
+                ):
+                    st.session_state["username"]     = login_username
+                    st.session_state["display_name"] = user.get("display_name", login_username)
+                    st.session_state["page"]         = "home"
+                    st.rerun()
+                else:
+                    st.error("Invalid username, email or password.")
+
+        with tab_register:
+            reg_display  = st.text_input("Display Name", placeholder="e.g. Aryan", key="reg_display").strip()
+            reg_username = st.text_input("Username",     placeholder="e.g. aryan123",  key="reg_username").strip()
+            reg_email    = st.text_input("Email",        placeholder="e.g. aryan@example.com", key="reg_email").strip().lower()
+            reg_password = st.text_input("Password",     type="password", key="reg_password")
+            reg_confirm  = st.text_input("Confirm Password", type="password", key="reg_confirm")
+
+            if st.button("✅ Create Account", use_container_width=True,
+                         disabled=not (reg_display and reg_username and reg_email and reg_password)):
+                if reg_password != reg_confirm:
+                    st.error("Passwords do not match.")
+                else:
+                    creds = _load_credentials()
+                    if reg_username in creds:
+                        st.error("Username already taken. Please choose another.")
+                    else:
+                        safe_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in reg_username)
+                        creds[safe_name] = {
+                            "email":        reg_email,
+                            "password":     reg_password,
+                            "display_name": reg_display,
+                        }
+                        _save_credentials(creds)
+                        st.success("Account created! You can now sign in.")
 
 
 # ─────────────────────────────────────────────
