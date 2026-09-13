@@ -436,7 +436,7 @@ Rules:
 - Keep it suitable for someone with no finance background.
 """
     try:
-        return client.models.generate_content(model="gemini-3.6-flash", contents=prompt).text
+        return client.models.generate_content(model="gemini-2.0-flash", contents=prompt).text
     except Exception as e:
         return f"Gemini analysis unavailable: {e}"
 
