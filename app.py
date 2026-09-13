@@ -384,19 +384,11 @@ def calculate_investment(amount: float, current_price: float, predicted_price: f
 # ─────────────────────────────────────────────
 # Gemini AI
 # ─────────────────────────────────────────────
+GEMINI_API_KEY = "AQ.Ab8RN6KF4JwKXLE0BuRdRhfpoMp2eliFIwcb-pO39WBII1CxCw"
+
+
 def get_gemini_client():
-    api_key = None
-    # Try secrets.toml first; catch any Streamlit/IO exception (not just KeyError)
-    try:
-        api_key = st.secrets["GEMINI_API_KEY"]
-    except Exception:
-        pass
-    # Fall back to environment variable
-    if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return None
-    return genai.Client(api_key=api_key)
+    return genai.Client(api_key=GEMINI_API_KEY)
 
 
 def gemini_investment_analysis(client, ticker, current_price, predicted_price,
@@ -879,20 +871,13 @@ def show_stock():
 
     # ── SECTION 5 — AI Recommendation ────────────
     st.subheader("🤖 AI Recommendation")
-    gemini = get_gemini_client()
-    if gemini is None:
-        st.warning(
-            "Gemini API key not found. "
-            "Add **GEMINI_API_KEY** to `.streamlit/secrets.toml` or as an env variable."
+    with st.spinner("Generating recommendation …"):
+        analysis = gemini_investment_analysis(
+            get_gemini_client(), ticker, current_price, predicted_price,
+            growth_pct, risk, tenure, goal, ratios,
+            units_held, avg_price,
         )
-    else:
-        with st.spinner("Generating recommendation …"):
-            analysis = gemini_investment_analysis(
-                gemini, ticker, current_price, predicted_price,
-                growth_pct, risk, tenure, goal, ratios,
-                units_held, avg_price,
-            )
-        st.markdown(analysis)
+    st.markdown(analysis)
 
     st.markdown("---")
 
