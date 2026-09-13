@@ -386,9 +386,13 @@ def calculate_investment(amount: float, current_price: float, predicted_price: f
 # ─────────────────────────────────────────────
 def get_gemini_client():
     api_key = None
+    # Try secrets.toml first; catch any Streamlit/IO exception (not just KeyError)
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
-    except (KeyError, FileNotFoundError):
+    except Exception:
+        pass
+    # Fall back to environment variable
+    if not api_key:
         api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return None
@@ -909,12 +913,52 @@ def show_stock():
 # ─────────────────────────────────────────────
 # ██  LOGIN PAGE
 # ─────────────────────────────────────────────
+def _get_saved_users() -> list[str]:
+    """Return folder names under storage/users/ that have at least a watchlist or holdings file."""
+    users_dir = os.path.join(STORAGE_DIR, "users")
+    if not os.path.isdir(users_dir):
+        return []
+    result = []
+    for entry in sorted(os.scandir(users_dir), key=lambda e: e.name.lower()):
+        if entry.is_dir():
+            has_data = (
+                os.path.exists(os.path.join(entry.path, "watchlist.json")) or
+                os.path.exists(os.path.join(entry.path, "holdings.json"))
+            )
+            if has_data:
+                result.append(entry.name)
+    return result
+
+
 def show_login():
     st.title("📈 InvestBro")
     st.markdown("#### Your AI-powered stock investment companion")
     st.markdown("---")
 
-    st.markdown("### 👤 Welcome! Please enter your name to continue.")
+    # ── Saved users (quick login) ──────────────
+    saved_users = _get_saved_users()
+    if saved_users:
+        st.markdown("### 👥 Saved Users")
+        st.caption("Click a name to sign in instantly.")
+
+        # Display up to 4 per row
+        cols_per_row = 4
+        for i in range(0, len(saved_users), cols_per_row):
+            row_users = saved_users[i : i + cols_per_row]
+            cols = st.columns(cols_per_row)
+            for col, uname in zip(cols, row_users):
+                # Derive a readable display name (replace underscores with spaces)
+                display = uname.replace("_", " ").title()
+                if col.button(f"👤 {display}", key=f"saved_user_{uname}", use_container_width=True):
+                    st.session_state["username"]     = uname
+                    st.session_state["display_name"] = display
+                    st.session_state["page"]         = "home"
+                    st.rerun()
+
+        st.markdown("---")
+
+    # ── New user entry ─────────────────────────
+    st.markdown("### ✏️ New User" if saved_users else "### 👤 Welcome! Please enter your name to continue.")
     st.markdown(
         "Your watchlist, portfolio and holdings are saved privately under your name."
     )
@@ -927,11 +971,11 @@ def show_login():
             help="Enter any name — each name gets its own private data.",
         ).strip()
         if st.button("🚀 Get Started", use_container_width=True, disabled=not name_input):
-            # Sanitise: keep only alphanumeric + underscores for folder safety
+            # Sanitise: keep only alphanumeric + hyphens/underscores for folder safety
             safe_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in name_input)
-            st.session_state["username"]      = safe_name
-            st.session_state["display_name"]  = name_input
-            st.session_state["page"]          = "home"
+            st.session_state["username"]     = safe_name
+            st.session_state["display_name"] = name_input
+            st.session_state["page"]         = "home"
             st.rerun()
 
 
