@@ -384,7 +384,7 @@ def calculate_investment(amount: float, current_price: float, predicted_price: f
 # ─────────────────────────────────────────────
 # Gemini AI
 # ─────────────────────────────────────────────
-GEMINI_API_KEY = "AQ.Ab8RN6L7IaO2MbkfQDKB6xxjZ2g5FFTRxYMoSs16M9qg-1hFJw"
+GEMINI_API_KEY = "AQ.Ab8RN6IYkF-Xpfi-nebEiMizbVgFeld7riGxb49XGHQXcFxnwg"
 
 
 def get_gemini_client():
@@ -436,7 +436,7 @@ Rules:
 - Keep it suitable for someone with no finance background.
 """
     try:
-        return client.models.generate_content(model="gemini-2.0-flash", contents=prompt).text
+        return client.models.generate_content(model="gemini-3.6-flash", contents=prompt).text
     except Exception as e:
         return f"Gemini analysis unavailable: {e}"
 
