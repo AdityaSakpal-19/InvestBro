@@ -1,0 +1,10 @@
+{
+  "ticker": "ITC.NS",
+  "trained_week": "2026-W36",
+  "trained_date": "2026-09-12",
+  "metrics": {
+    "MAE": 7.0158,
+    "RMSE": 9.1068,
+    "R2": 0.9563
+  }
+}

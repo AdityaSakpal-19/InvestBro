@@ -1,0 +1,10 @@
+{
+  "ticker": "RELIANCE.NS",
+  "trained_week": "2026-W36",
+  "trained_date": "2026-09-10",
+  "metrics": {
+    "MAE": 14.8252,
+    "RMSE": 19.5383,
+    "R2": 0.9494
+  }
+}

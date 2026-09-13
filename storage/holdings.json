@@ -1,0 +1,32 @@
+{
+  "RELIANCE.NS": {
+    "units": 12.9523,
+    "avg_price": 1257.5,
+    "transactions": [
+      {
+        "date": "2026-09-12",
+        "type": "BUY",
+        "units": 7.9523,
+        "price": 1257.5
+      },
+      {
+        "date": "2026-09-12",
+        "type": "BUY",
+        "units": 5.0,
+        "price": 1257.5
+      }
+    ]
+  },
+  "ITC.NS": {
+    "units": 19.0,
+    "avg_price": 259.85,
+    "transactions": [
+      {
+        "date": "2026-09-12",
+        "type": "BUY",
+        "units": 19.0,
+        "price": 259.85
+      }
+    ]
+  }
+}
